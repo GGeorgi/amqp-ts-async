@@ -1,5 +1,5 @@
 {
-  "name": "amqp-ts",
+  "name": "amqp-ts-async",
   "version": "1.3.0",
   "description": "Easy to use AMQP library written in Typescript (using amqplib).",
   "repository": {

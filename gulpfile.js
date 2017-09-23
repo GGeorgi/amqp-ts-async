@@ -24,7 +24,7 @@ function swallowError (error) {
 //define typescript project
 var tsProject = ts.createProject({
   module: 'commonjs',
-  target: 'ES5',
+  target: 'es2017',
   declaration: true
 });
 

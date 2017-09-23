@@ -9,7 +9,6 @@
 // simplified use of amqp exchanges and queues, wrapper for amqplib
 
 import * as AmqpLib from "amqplib/callback_api";
-import * as Promise from "bluebird";
 import * as winston from "winston";
 import * as path from "path";
 import * as os from "os";
@@ -343,9 +342,9 @@ export class Message {
     return content;
   }
 
-  sendTo(destination: Exchange | Queue, routingKey: string = ""): void {
+  async sendTo(destination: Exchange | Queue, routingKey: string = ""): Promise<void> {
     // inline function to send the message
-    var sendMessage = () => {
+    var sendMessage = async () => {
       try {
         destination._channel.publish(exchange, routingKey, this.content, this.properties);
       } catch (err) {
@@ -373,12 +372,8 @@ export class Message {
       exchange = destination._name;
     }
 
-    // execute sync when possible
-    if (destination.initialized.isFulfilled()) {
-      sendMessage();
-    } else {
-      (<Promise<any>>destination.initialized).then(sendMessage);
-    }
+    await destination.initialized;
+    await sendMessage();
   }
 
   ack(allUpTo?: boolean): void {
@@ -488,20 +483,20 @@ export class Exchange {
     });
   }
 
-  send(message: Message, routingKey = ""): void {
-    message.sendTo(this, routingKey);
+  async send(message: Message, routingKey = ""): Promise<void> {
+    return message.sendTo(this, routingKey);
   }
 
-  rpc(requestParameters: any, routingKey = ""): Promise<Message> {
-    return new Promise<Message>((resolve, reject) => {
-      var processRpc = () => {
+  async rpc(requestParameters: any, routingKey = ""): Promise<Message> {
+    return new Promise<Message>(async (resolve, reject) => {
+      var processRpc = async () => {
         var consumerTag: string;
         this._channel.consume(DIRECT_REPLY_TO_QUEUE, (resultMsg) => {
           this._channel.cancel(consumerTag);
           var result = new Message(resultMsg.content, resultMsg.fields);
           result.fields = resultMsg.fields;
           resolve(result);
-        }, { noAck: true }, (err, ok) => {
+        }, { noAck: true }, async (err, ok) => {
           /* istanbul ignore if */
           if (err) {
             reject(new Error("amqp-ts: Queue.rpc error: " + err.message));
@@ -509,17 +504,13 @@ export class Exchange {
             // send the rpc request
             consumerTag = ok.consumerTag;
             var message = new Message(requestParameters, { replyTo: DIRECT_REPLY_TO_QUEUE });
-            message.sendTo(this, routingKey);
+            await message.sendTo(this, routingKey);
           }
         });
       };
 
-      // execute sync when possible
-      if (this.initialized.isFulfilled()) {
-        processRpc();
-      } else {
-        this.initialized.then(processRpc);
-      }
+      await this.initialized;
+      await processRpc();
     });
   }
 
@@ -749,9 +740,9 @@ export class Queue {
   /**
    * deprecated, use 'queue.send(message: Message)' instead
    */
-  publish(content: any, options: any = {}): void {
+  async publish(content: any, options: any = {}): Promise<void> {
     // inline function to send the message
-    var sendMessage = () => {
+    var sendMessage = async () => {
       try {
         this._channel.sendToQueue(this._name, content, options);
       } catch (err) {
@@ -759,36 +750,32 @@ export class Queue {
         var queueName = this._name;
         var connection = this._connection;
         log.log("debug", "Try to rebuild connection, before Call.", { module: "amqp-ts" });
-        connection._rebuildAll(err).then(() => {
-          log.log("debug", "Retransmitting message.", { module: "amqp-ts" });
-          connection._queues[queueName].publish(content, options);
-        });
+        await connection._rebuildAll(err);
+        log.log("debug", "Retransmitting message.", { module: "amqp-ts" });
+        await connection._queues[queueName].publish(content, options);
       }
     };
 
     content = Queue._packMessageContent(content, options);
-    // execute sync when possible
-    if (this.initialized.isFulfilled()) {
-      sendMessage();
-    } else {
-      this.initialized.then(sendMessage);
-    }
+
+    await this.initialized;
+    sendMessage();
   }
 
   send(message: Message, routingKey = ""): void {
     message.sendTo(this, routingKey);
   }
 
-  rpc(requestParameters: any): Promise<Message> {
-    return new Promise<Message>((resolve, reject) => {
-      var processRpc = () => {
+  async rpc(requestParameters: any): Promise<Message> {
+    return new Promise<Message>(async (resolve, reject) => {
+      var processRpc = async () => {
         var consumerTag: string;
         this._channel.consume(DIRECT_REPLY_TO_QUEUE, (resultMsg) => {
           this._channel.cancel(consumerTag);
           var result = new Message(resultMsg.content, resultMsg.fields);
           result.fields = resultMsg.fields;
           resolve(result);
-        }, { noAck: true }, (err, ok) => {
+        }, { noAck: true }, async (err, ok) => {
           /* istanbul ignore if */
           if (err) {
             reject(new Error("amqp-ts: Queue.rpc error: " + err.message));
@@ -796,17 +783,13 @@ export class Queue {
             // send the rpc request
             consumerTag = ok.consumerTag;
             var message = new Message(requestParameters, { replyTo: DIRECT_REPLY_TO_QUEUE });
-            message.sendTo(this);
+            await message.sendTo(this);
           }
         });
       };
 
-      // execute sync when possible
-      if (this.initialized.isFulfilled()) {
-        processRpc();
-      } else {
-        this.initialized.then(processRpc);
-      }
+      await this.initialized;
+      await processRpc();
     });
   }
 

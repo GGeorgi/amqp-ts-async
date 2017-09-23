@@ -26,3 +26,4 @@ node_modules
 .idea
 # Do not exclude project settings of default develop environment
 .vscode
+package-lock.json

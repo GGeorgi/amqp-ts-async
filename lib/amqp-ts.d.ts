@@ -1,6 +1,5 @@
+/// <reference types="node" />
 import * as AmqpLib from "amqplib/callback_api";
-import * as winston from "winston";
-export declare var log: winston.LoggerInstance;
 export declare class Connection {
     initialized: Promise<void>;
     private url;
@@ -20,8 +19,8 @@ export declare class Connection {
         [id: string]: Binding;
     };
     constructor(url?: string, socketOptions?: any, reconnectStrategy?: Connection.ReconnectStrategy);
-    private rebuildConnection();
-    private tryToConnect(thisConnection, retry, callback);
+    private rebuildConnection;
+    private tryToConnect;
     _rebuildAll(err: Error): Promise<void>;
     close(): Promise<void>;
     completeConfiguration(): Promise<any>;

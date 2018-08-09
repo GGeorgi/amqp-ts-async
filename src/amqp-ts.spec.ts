@@ -20,8 +20,6 @@ var testExchangeNamePrefix = process.env.AMQPTEST_EXCHANGE_PREFIX || "TestExchan
 var testQueueNamePrefix = process.env.AMQPTEST_QUEUE_PREFIX || "TestQueue_";
 
 // set logging level
-Amqp.log.transports.console.level = LogLevel;
-
 /* istanbul ignore next */
 describe("Test amqp-ts module", function () {
   this.timeout(UnitTestTimeout); // define default timeout
@@ -52,7 +50,7 @@ describe("Test amqp-ts module", function () {
     var processAll: Promise<any>[] = [];
     console.log("cleanup phase!");
     for (var i = 0, l = connections.length; i < l; i++) {
-      processAll.push(connections[i].deleteConfiguration());
+      processAll.push(<any>connections[i].deleteConfiguration());
     }
     Promise.all(processAll).then(() => {
       done();

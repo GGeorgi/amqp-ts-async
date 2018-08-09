@@ -16,8 +16,6 @@ var UnitTestLongTimeout = process.env.AMQPTEST_LONG_TIMEOUT || 60000;
 var LogLevel = process.env.AMQPTEST_LOGLEVEL || "warn";
 
 // set logging level
-var winston = Amqp.log;
-winston.transports.console.level = LogLevel;
 
 // needed for server restart tests
 var os = require("os");
@@ -35,7 +33,6 @@ function restartAmqpServer() {
       cp.execSync("net stop rabbitmq");
       cp.exec("net start rabbitmq");
     } catch (err) {
-      winston.log("error", "Unable to shutdown and restart RabbitMQ, possible solution: use elevated permissions (start an admin shell)");
       throw (new Error("Unable to restart rabbitmq, error:\n" + err.message));
     }
   } else {
